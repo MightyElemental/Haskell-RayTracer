@@ -281,10 +281,3 @@ testLight = Light [0,100,0] 1 [255,255,255]
 
 testWorld :: World
 testWorld = World [testPlane,testSphere,testSphere2,testPlane2,testSphere3] [testLight]
-
-
-testRay :: Ray
-testRay = Ray [0,10,0] [0,-1,0]
-
-test :: [([Float], Object3D)]
-test = rayObjectIntersections testRay testWorld
