@@ -47,6 +47,8 @@ rayObjectIntersections = undefined
 -- ray, object, return distances to intersection
 -- an empty list means it did not intersect
 rayIntersection :: Ray -> Object3D -> [Float]
+
+-- https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
 rayIntersection r s@Sphere {}
     | nabla < 0  = []
     | nabla == 0 = filter (>=0) [dfh]
@@ -59,7 +61,13 @@ rayIntersection r s@Sphere {}
         posDist = dfh + sqrt nabla
         negDist = dfh - sqrt nabla
 
-rayIntersection r p@Plane {} = undefined
+-- https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+rayIntersection r p@Plane {} 
+    | lDotN == 0 = []
+    | otherwise  = filter (>=0) [d]
+    where
+        lDotN = dir r /./ norm p
+        d     = ((pos p /-/ origin r) /./ norm p) / lDotN
 
 
 {-
