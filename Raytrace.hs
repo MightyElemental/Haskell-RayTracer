@@ -1,5 +1,11 @@
 module Raytrace where
 
+-- Ensure output is encoded at UTF8
+import Data.Char (chr)
+import Prelude hiding (putStr)
+import Data.ByteString.Char8 (putStr)
+import Data.String ( IsString(fromString) )
+
 toRadians :: Float -> Float
 toRadians deg = deg * (pi/180)
 
@@ -57,6 +63,9 @@ sumVecs = foldr (/+/) zeroVec
 -- Converts a vector to a string delimited by spaces
 vecToStr :: Vec -> String
 vecToStr = concatMap ((++" ").show.floor)
+
+vecToStr2 :: Vec -> String
+vecToStr2 = map (chr . floor)
 
 {-
 --== MATRIX DEFINITION ==--
@@ -261,10 +270,12 @@ getDiffuse r@(Ray _ rayDir) w@(World _ lights) obj hitPos = baseColor /+/ finalL
 
 main :: IO ()
 main = do
-    putStrLn "P3"
-    putStrLn (show (fst dimensions)++" "++show (snd dimensions))
-    putStrLn "255"
-    putStrLn $ concatMap (\x -> vecToStr $ getColor x testWorld) generateRayMatrix
+    -- Print PPM header
+    putStr $ fromString "P6 "
+    putStr $ fromString (show (fst dimensions)++" "++show (snd dimensions))
+    putStr $ fromString " 255 "
+    -- Print image data
+    putStr $ fromString $ concatMap (\x -> vecToStr2 $ getColor x testWorld) generateRayMatrix
 
 
 {-
