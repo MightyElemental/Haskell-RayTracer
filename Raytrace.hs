@@ -38,15 +38,19 @@ unit :: Vec -> Vec
 unit a = map (/length) a
     where length = vecLen a
 
+-- Vector from one point to another
 vecTo :: Vec -> Vec -> Vec
 vecTo a b = zipWith (-) b a
 
+-- Negate a vector
 negVec :: Vec -> Vec
 negVec = map negate
 
+-- A vector of zeros
 zeroVec :: Vec
 zeroVec = repeat 0
 
+-- Sum a list of vectors together
 sumVecs :: [Vec] -> Vec
 sumVecs = foldr (/+/) zeroVec
 
@@ -61,6 +65,7 @@ vecToStr = concatMap ((++" ").show.floor)
 -- A 4x4 matrix (A single list represented by (x + y*4))
 type Mat = [Float]
 
+-- Get a value in a matrix at a specific position
 getMatVal :: Mat -> Int -> Int -> Float
 getMatVal m x y = m !! (x+y*4)
 
@@ -113,6 +118,9 @@ matRotation :: Vec -> Mat
 matRotation [x,y,z] = matXRotation x `matMul` matYRotation y `matMul` matZRotation z
 matRotation _       = [] -- should never happen
 
+{-
+--== OBJECT DEFINITIONS ==--
+-}
 
 -- Define different renderable objects
 data Object3D =
@@ -123,6 +131,7 @@ data Object3D =
 -- A ray has a starting point and a direction
 data Ray = Ray {origin::Vec, dir::Vec} deriving (Eq, Show)
 
+-- Get the position where a ray intersected
 getHitPos :: Ray -> Float -> Vec
 getHitPos (Ray o dir) dist = o /+/ (dist /*/ dir)
 
@@ -225,7 +234,8 @@ getColor r w@(World objs lights)
 
         -- getColor r   = color $ closest o (head d) ob -- TEMPORARY
         
-
+-- Get the closest object to the camera
+-- A list of intersected objects and their distances with an initial distance and object
 getClosestObj :: [([Float], Object3D)] -> Float -> Object3D -> (Float, Object3D)
 getClosestObj [(dist, obj)] minDist minObj -- only one object
     | minimum dist < minDist = (minimum dist, obj)
@@ -233,7 +243,7 @@ getClosestObj [(dist, obj)] minDist minObj -- only one object
 getClosestObj ((dist, obj):xs) minDist minObj
     | minimum dist < minDist = getClosestObj xs (minimum dist) obj
     | otherwise              = getClosestObj xs minDist minObj
-getClosestObj _ _ _ = undefined -- should never reach here
+getClosestObj _ _ _          = undefined -- should never reach here
 
 -- Diffuse colors
 getDiffuse :: Ray -> World -> Object3D -> Vec -> Vec
@@ -258,7 +268,7 @@ main = do
 
 
 {-
---== TESTING SECTION ==--
+--== SCENE DEFINITION ==--
 -}
 
 testPlane :: Object3D
