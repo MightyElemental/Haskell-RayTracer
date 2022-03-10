@@ -3,6 +3,8 @@
 ## Example
 ![Preview of rendered image](haskell-rt-preview.png)
 
+![Preview of rendered image](haskell-rt-reflective-preview.png)
+
 ## How to use (only tested on Linux)
 1. Install GHC
 2. Download source code
