@@ -133,8 +133,8 @@ matRotation _       = [] -- should never happen
 
 -- Define different renderable objects
 data Object3D =
-    Sphere {pos::Vec, radius::Float, color::Vec} |
-    Plane {pos::Vec, norm::Vec, color::Vec}
+    Sphere {pos::Vec, radius::Float, color::Vec, reflective::Float} |
+    Plane {pos::Vec, norm::Vec, color::Vec, reflective::Float}
     deriving (Eq, Show)
 
 -- A ray has a starting point and a direction
@@ -164,6 +164,17 @@ rayObjNormal (Ray _ rayDir) hitPos s@Sphere {} =
 rayObjNormal (Ray _ rayDir) hitPos p@Plane {}
     | rayDir /./ norm p < 0 = norm p -- test for which face the ray hit
     | otherwise = negVec $ norm p
+
+-- The reflected ray when it hits an object
+-- The Ray, The distance to the object, The object -> Reflected Ray
+rayReflection :: Ray -> Float -> Object3D -> Ray
+rayReflection r@(Ray _ rayDir) dist obj = Ray startVec refVec
+    where
+        hitPos   = getHitPos r dist
+        normal   = rayObjNormal r hitPos obj
+        dotP     = rayDir /./ normal
+        refVec   = unit (rayDir /-/ ((2*dotP)/*/normal))
+        startVec = hitPos /+/ (0.01 /*/ refVec)
 
 
 -- ray, object, return distances to intersection
@@ -233,16 +244,25 @@ generateRayMatrix = [createRay x y | y <- [0..height-1], x <- [0..width-1]]
         width  = fst dimensions
         height = snd dimensions
 
-getColor :: Ray -> World -> Vec
-getColor r w@(World objs lights)
+-- Trace the ray and return the color of the pixel
+-- Ray, World, Ray Depth -> Color
+getColor :: Ray -> World -> Int-> Vec
+getColor r w@(World objs lights) depth
     | null objIntersections = [0,0,0] -- did not intersect
-    | otherwise = getDiffuse r w (snd closestObj) (getHitPos r (fst closestObj))
+    | reflectivity > 0 && depth >= 0 = reflect -- switch between pure reflection and partial
+    | otherwise = diffuse
     where
         objIntersections = rayObjectIntersections r w
         closestObj = getClosestObj objIntersections (head $ fst (head objIntersections)) (snd (head objIntersections))
+        reflectedRay = uncurry (rayReflection r) closestObj -- the ray reflected about the object normal
+        reflectivity = reflective (snd closestObj) -- the fraction of reflectivity of the object
+        diffuse = getDiffuse r w (snd closestObj) (getHitPos r (fst closestObj))
+        onlyReflect = getColor reflectedRay w (depth-1) -- pure reflection
+        reflect | reflectivity == 1 = onlyReflect
+                | otherwise         = ((1-reflectivity) /*/ diffuse) /+/ (reflectivity /*/ onlyReflect) -- mixed reflection
 
         -- getColor r   = color $ closest o (head d) ob -- TEMPORARY
-        
+
 -- Get the closest object to the camera
 -- A list of intersected objects and their distances with an initial distance and object
 getClosestObj :: [([Float], Object3D)] -> Float -> Object3D -> (Float, Object3D)
@@ -275,7 +295,7 @@ main = do
     putStr $ fromString (show (fst dimensions)++" "++show (snd dimensions))
     putStr $ fromString " 255 "
     -- Print image data
-    putStr $ fromString $ concatMap (\x -> vecToStr2 $ getColor x testWorld) generateRayMatrix
+    putStr $ fromString $ concatMap (\x -> vecToStr2 $ getColor x testWorld 4) generateRayMatrix
 
 
 {-
@@ -283,22 +303,25 @@ main = do
 -}
 
 testPlane :: Object3D
-testPlane = Plane [0,0,0] [0,1,0] [120,0,120]
+testPlane = Plane [0,0,0] [0,1,0] [120,0,120] 0
 
 testPlane2 :: Object3D
-testPlane2 = Plane [-5,0,-5] [-1,-1.2,-0.5] [0,0,120]
+testPlane2 = Plane [-5,0,-5] [-1,-1.2,-0.5] [0,0,120] 0
 
 testSphere :: Object3D
-testSphere = Sphere [2,0.5,-2] 1 [0,120,120]
+testSphere = Sphere [3,0.6,-2] 1 [0,120,120] 0.5
 
 testSphere2 :: Object3D
-testSphere2 = Sphere [2,5,-8] 2 [0,120,0]
+testSphere2 = Sphere [2,5.5,-8] 1.5 [0,120,0] 0.5
 
 testSphere3 :: Object3D
-testSphere3 = Sphere [-5,3,-7] 2 [120,0,0]
+testSphere3 = Sphere [-6,3,-6] 2 [120,0,0] 0.5
+
+testSphere4 :: Object3D
+testSphere4 = Sphere [1,1.5,-10] 2 [120,120,120] 1
 
 testLight :: Light
 testLight = Light [0,100,0] 1 [255,255,255]
 
 testWorld :: World
-testWorld = World [testPlane,testSphere,testSphere2,testPlane2,testSphere3] [testLight]
+testWorld = World [testPlane,testSphere,testSphere2,testPlane2,testSphere3,testSphere4] [testLight]
