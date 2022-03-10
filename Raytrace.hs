@@ -185,14 +185,13 @@ rayIntersection :: Ray -> Object3D -> [Float]
 rayIntersection r s@Sphere {}
     | nabla < 0  = []
     | nabla == 0 = filter (>=0) [dfh]
-    | otherwise  = filter (>=0) [negDist, posDist]
+    | otherwise  = filter (>=0) [dist (-), dist (+)]
     where
         nabla   = (uv /./ oSubC)^2 - vecLen oSubC^2 + radius s^2
         uv      = unit $ dir r
         oSubC   = origin r /-/ pos s
         dfh     = -(uv /./ oSubC)
-        posDist = dfh + sqrt nabla
-        negDist = dfh - sqrt nabla
+        dist sign = dfh `sign` sqrt nabla
 
 -- https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
 rayIntersection r p@Plane {}
@@ -218,12 +217,13 @@ aspectRatio = x / y
         x = fromIntegral $ fst dimensions
         y = fromIntegral $ snd dimensions
 
-defaultCamera :: Camera
-defaultCamera = Camera [0,1,0.1] [-10,0,0] -- up/down, left/right, roll
-
 -- The multiplier of brightness in complete darkess
 ambientCoeff :: Float
 ambientCoeff = 0.5
+
+-- The limit of how far a ray can render
+rayLimit :: Float
+rayLimit = 999
 
 createRay :: Int -> Int -> Ray
 createRay x y = Ray (camPos defaultCamera) direction
@@ -246,22 +246,20 @@ generateRayMatrix = [createRay x y | y <- [0..height-1], x <- [0..width-1]]
 
 -- Trace the ray and return the color of the pixel
 -- Ray, World, Ray Depth -> Color
-getColor :: Ray -> World -> Int-> Vec
+getColor :: Ray -> World -> Int -> Vec
 getColor r w@(World objs lights) depth
     | null objIntersections = [0,0,0] -- did not intersect
     | reflectivity > 0 && depth >= 0 = reflect -- switch between pure reflection and partial
     | otherwise = diffuse
     where
         objIntersections = rayObjectIntersections r w
-        closestObj = getClosestObj objIntersections (head $ fst (head objIntersections)) (snd (head objIntersections))
+        closestObj = getClosestObj objIntersections rayLimit (snd (head objIntersections))
         reflectedRay = uncurry (rayReflection r) closestObj -- the ray reflected about the object normal
         reflectivity = reflective (snd closestObj) -- the fraction of reflectivity of the object
         diffuse = getDiffuse r w (snd closestObj) (getHitPos r (fst closestObj))
         onlyReflect = getColor reflectedRay w (depth-1) -- pure reflection
         reflect | reflectivity == 1 = onlyReflect
                 | otherwise         = ((1-reflectivity) /*/ diffuse) /+/ (reflectivity /*/ onlyReflect) -- mixed reflection
-
-        -- getColor r   = color $ closest o (head d) ob -- TEMPORARY
 
 -- Get the closest object to the camera
 -- A list of intersected objects and their distances with an initial distance and object
@@ -301,6 +299,9 @@ main = do
 {-
 --== SCENE DEFINITION ==--
 -}
+
+defaultCamera :: Camera
+defaultCamera = Camera [0,1,0.1] [-10,0,0] -- up/down, left/right, roll
 
 testPlane :: Object3D
 testPlane = Plane [0,0,0] [0,1,0] [120,0,120] 0
