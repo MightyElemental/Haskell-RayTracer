@@ -280,17 +280,17 @@ getClosestObj _ _ _          = undefined -- should never reach here
 
 -- Diffuse colors
 getDiffuse :: Ray -> World -> Object3D -> Vec -> Vec
-getDiffuse r@(Ray _ rayDir) w@(World _ lights) obj hitPos = colorMul `vecMul` totalLightAddition
+getDiffuse r@(Ray _ rayDir) w@(World _ lights) obj hitPos = colorMul `vecMul` finalLightTotal
     where
         colorMul = color obj -- the color multiplier of the object
         lvec l = unit (hitPos `vecTo` lightPos l) -- unit vector from hit to light
         shadowRay l = Ray (hitPos /+/ (0.01 /*/ lvec l)) (lvec l) -- may need to test for performance
         isNotInShadow l = null $ rayObjectIntersections (shadowRay l) w -- is another object between obj and light
         objLightDotPod l = unit (rayObjNormal r hitPos obj) /./ lvec l -- dot product between object normal and light
-        lightCount = fromIntegral (length lights)
+        reciprocalLightCount = 1 / fromIntegral (length lights)
         lightAddition l = (lightIntensity l * objLightDotPod l) /*/ lightColor l -- how much color to add to the pixel
         totalLightAddition = sumVecs [lightAddition l | l<-lights, isNotInShadow l, objLightDotPod l > 0] -- all lights added together
-        finalLightTotal = ((1-ambientCoeff) / lightCount ) /*/ totalLightAddition
+        finalLightTotal = reciprocalLightCount /*/ totalLightAddition
 
 main :: IO ()
 main = do
@@ -331,7 +331,7 @@ testLight :: Light
 testLight = Light [0,100,0] 1 [255,255,255]
 
 testLight2 :: Light
-testLight2 = Light [0,100,50] 1 [0,0,100]
+testLight2 = Light [0,50,50] 1 [255,255,255]
 
 testWorld :: World
-testWorld = World [testPlane,testPlane2,testSphere,testSphere2,testSphere3,testSphere4] [testLight]
+testWorld = World [testPlane,testPlane2,testSphere,testSphere2,testSphere3,testSphere4] [testLight,testLight2]
