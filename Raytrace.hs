@@ -31,6 +31,10 @@ type Vec = [Float]
 (/*/) :: Float -> Vec -> Vec
 (/*/) = map . (*)
 
+-- Generate a new vector comprised of the multiplication of each value in the two input vectors
+vecMul :: Vec -> Vec -> Vec
+vecMul = zipWith (*)
+
 -- Dot product of two vectors
 (/./) :: Vec -> Vec -> Float
 (/./) a b = sum $ zipWith (*) a b
@@ -132,6 +136,7 @@ matRotation _       = [] -- should never happen
 -}
 
 -- Define different renderable objects
+-- color is the reflectance percentage of light
 data Object3D =
     Sphere {pos::Vec, radius::Float, color::Vec, reflective::Float} |
     Plane {pos::Vec, norm::Vec, color::Vec, reflective::Float}
@@ -225,6 +230,7 @@ ambientCoeff = 0.5
 rayLimit :: Float
 rayLimit = 999
 
+-- Create a camera ray based on the defaultCamera
 createRay :: Int -> Int -> Ray
 createRay x y = Ray (camPos defaultCamera) direction
     where
@@ -274,9 +280,9 @@ getClosestObj _ _ _          = undefined -- should never reach here
 
 -- Diffuse colors
 getDiffuse :: Ray -> World -> Object3D -> Vec -> Vec
-getDiffuse r@(Ray _ rayDir) w@(World _ lights) obj hitPos = baseColor /+/ finalLightTotal
+getDiffuse r@(Ray _ rayDir) w@(World _ lights) obj hitPos = colorMul `vecMul` totalLightAddition
     where
-        baseColor = ambientCoeff /*/ color obj
+        colorMul = color obj -- the color multiplier of the object
         lvec l = unit (hitPos `vecTo` lightPos l) -- unit vector from hit to light
         shadowRay l = Ray (hitPos /+/ (0.01 /*/ lvec l)) (lvec l) -- may need to test for performance
         isNotInShadow l = null $ rayObjectIntersections (shadowRay l) w -- is another object between obj and light
@@ -304,25 +310,28 @@ defaultCamera :: Camera
 defaultCamera = Camera [0,1,0.1] [-10,0,0] -- up/down, left/right, roll
 
 testPlane :: Object3D
-testPlane = Plane [0,0,0] [0,1,0] [120,0,120] 0
+testPlane = Plane [0,0,0] [0,1,0] [0.95,0.5,0.95] 0
 
 testPlane2 :: Object3D
-testPlane2 = Plane [-5,0,-5] [-1,-1.2,-0.5] [0,0,120] 0
+testPlane2 = Plane [-5,0,-5] [-1,-1.2,-0.5] [0.5,0.5,0.95] 0
 
 testSphere :: Object3D
-testSphere = Sphere [3,0.6,-2] 1 [0,120,120] 0.5
+testSphere = Sphere [3,0.6,-2] 1 [0,0.5,0.5] 0.5
 
 testSphere2 :: Object3D
-testSphere2 = Sphere [2,5.5,-8] 1.5 [0,120,0] 0.5
+testSphere2 = Sphere [2,5.5,-8] 1.5 [1,1,1] 0.5
 
 testSphere3 :: Object3D
-testSphere3 = Sphere [-6,3,-6] 2 [120,0,0] 0.5
+testSphere3 = Sphere [-6,3,-6] 2 [0.5,0,0] 0.5
 
 testSphere4 :: Object3D
-testSphere4 = Sphere [1,1.5,-10] 2 [120,120,120] 1
+testSphere4 = Sphere [1,1.5,-10] 2 [0.5,0.5,0.5] 1
 
 testLight :: Light
 testLight = Light [0,100,0] 1 [255,255,255]
 
+testLight2 :: Light
+testLight2 = Light [0,100,50] 1 [0,0,100]
+
 testWorld :: World
-testWorld = World [testPlane,testSphere,testSphere2,testPlane2,testSphere3,testSphere4] [testLight]
+testWorld = World [testPlane,testPlane2,testSphere,testSphere2,testSphere3,testSphere4] [testLight]
